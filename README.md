@@ -1,7 +1,7 @@
 # Sushi_liquidity
 
 ## Description
-This is a demo project that users can provide the liquidity and earn SUSHI on sushiswap for Rather Labs
+This is a demo project that users can provide the liquidity and earn SUSHI in proportion to the amount they provide on sushiswap for Rather Labs
 ### Tech Stack
 
   - Solidity:         v0.8.18
