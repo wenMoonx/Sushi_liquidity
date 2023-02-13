@@ -55,7 +55,7 @@ const config: HardhatUserConfig = {
         url: "https://eth-mainnet.g.alchemy.com/v2/gZsF23-dlXd19b9gUSXljcGkyCpY7CQd",
       },
       allowUnlimitedContractSize: true,
-      gas: 1800000,
+      gas: 18000000,
     },
   },
   paths: {
@@ -70,7 +70,7 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
   },
   solidity: {
-    version: "0.8.9",
+    version: "0.8.18",
     settings: {
       metadata: {
         // Not including the metadata hash

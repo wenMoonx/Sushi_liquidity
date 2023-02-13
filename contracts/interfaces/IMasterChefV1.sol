@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 /// @notice interface for Sushiswap MasterChef contract
-pragma solidity 0.8.9;
+pragma solidity 0.8.18;
 
-interface ISushiChef {
+interface IMasterChefV1 {
     function BONUS_MULTIPLIER() external view returns (uint256);
 
     function add(uint256 _allocPoint, address _lpToken, bool _withUpdate) external;

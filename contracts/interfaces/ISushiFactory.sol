@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.9;
+pragma solidity 0.8.18;
 
 interface ISushiFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
