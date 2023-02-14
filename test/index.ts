@@ -81,26 +81,32 @@ describe("Start liquidity program on sushiswap", async () => {
       it("Check the token address", async () => {
         await expect(
           sushi.connect(alice).addLiquidity(dai.address, ethers.constants.AddressZero, 50000, 100, poolId, version),
-        ).to.be.revertedWith("evan407: token address must be given");
+        ).to.be.revertedWith("addLiquidity: token address must be given");
         await expect(
           sushi.connect(alice).addLiquidity(ethers.constants.AddressZero, weth.address, 100000, 15000, poolId, version),
-        ).to.be.revertedWith("evan407: token address must be given");
+        ).to.be.revertedWith("addLiquidity: token address must be given");
       });
 
       it("Check deposit token amount", async () => {
         await expect(
           sushi.connect(alice).addLiquidity(dai.address, weth.address, 0, 100, poolId, version),
-        ).to.be.revertedWith("evan407: token amount must be bigger than 0");
+        ).to.be.revertedWith("addLiquidity: token amount must be bigger than 0");
 
         await expect(
           sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 0, poolId, version),
-        ).to.be.revertedWith("evan407: token amount must be bigger than 0");
+        ).to.be.revertedWith("addLiquidity: token amount must be bigger than 0");
       });
 
       it("Check lp token amount", async () => {
         await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
         const { lpAmount } = await sushi.connect(alice).balanceOfPool(poolId, version);
         await expect(parseInt(lpAmount)).to.greaterThan(0);
+      });
+
+      it("Check version", async () => {
+        await expect(
+          sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, 3),
+        ).to.be.revertedWith("checkVersion: Version must be 1 or 2");
       });
     });
 
@@ -114,6 +120,15 @@ describe("Start liquidity program on sushiswap", async () => {
         const afterBalance = await sushi.balanceOfSushi(alice.address);
 
         expect(afterBalance - beforeBalance).to.greaterThan(0);
+      });
+
+      it("Check version", async () => {
+        await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
+
+        mine(100000);
+        await expect(sushi.connect(alice).harvest(poolId, 3)).to.be.revertedWith(
+          "checkVersion: Version must be 1 or 2",
+        );
       });
 
       it("Check the owner", async () => {
@@ -136,7 +151,20 @@ describe("Start liquidity program on sushiswap", async () => {
         await sushi.connect(alice).harvest(poolId, version);
 
         await expect(sushi.connect(alice).withdraw(5000, poolId, version)).to.be.revertedWith(
-          "evan407: withdraw amount must be smaller than total amount",
+          "withdraw: amount must be smaller than total amount",
+        );
+      });
+
+      it("Check version", async () => {
+        await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
+        mine(100000);
+
+        await sushi.connect(alice).harvest(poolId, version);
+        const balance = await sushi.balanceOfSushi(alice.address);
+        expect(balance).to.greaterThan(0);
+
+        await expect(sushi.connect(alice).withdraw(500, poolId, 3)).to.be.revertedWith(
+          "checkVersion: Version must be 1 or 2",
         );
       });
 
@@ -176,6 +204,17 @@ describe("Start liquidity program on sushiswap", async () => {
         await sushi.connect(alice).withdrawAndHarvest(500, poolId, version);
       });
 
+      it("Check version", async () => {
+        await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
+
+        mine(100000);
+
+        await sushi.connect(alice).harvest(poolId, version);
+        await expect(sushi.connect(alice).withdrawAndHarvest(500, poolId, 4)).to.be.revertedWith(
+          "checkVersion: Version must be 1 or 2",
+        );
+      });
+
       it("Check owner", async () => {
         await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
 
@@ -193,7 +232,7 @@ describe("Start liquidity program on sushiswap", async () => {
         await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
         await expect(
           sushi.connect(alice).removeLiquidity(dai.address, weth.address, poolId, version),
-        ).to.be.revertedWith("evan407: you have to withdraw from masterchef first");
+        ).to.be.revertedWith("removeLiquidity: you have to withdraw from masterchef first");
       });
 
       it("Check removeLiquidity", async () => {
@@ -202,6 +241,16 @@ describe("Start liquidity program on sushiswap", async () => {
 
         await sushi.connect(alice).withdraw(parseInt(lpAmount), poolId, version);
         await sushi.connect(alice).removeLiquidity(dai.address, weth.address, poolId, version);
+      });
+
+      it("Check version", async () => {
+        await sushi.connect(alice).addLiquidity(dai.address, weth.address, 50000, 100, poolId, version);
+        const { lpAmount } = await sushi.connect(alice).balanceOfPool(poolId, version);
+
+        await sushi.connect(alice).withdraw(parseInt(lpAmount), poolId, version);
+        await expect(sushi.connect(alice).removeLiquidity(dai.address, weth.address, poolId, 3)).to.be.revertedWith(
+          "checkVersion: Version must be 1 or 2",
+        );
       });
 
       it("Check owner", async () => {
@@ -230,20 +279,20 @@ describe("Start liquidity program on sushiswap", async () => {
       it("Check the token address", async () => {
         await expect(
           sushi.connect(alice).addLiquidity(dai.address, ethers.constants.AddressZero, 50000, 100, poolId, version),
-        ).to.be.revertedWith("evan407: token address must be given");
+        ).to.be.revertedWith("addLiquidity: token address must be given");
         await expect(
           sushi.connect(alice).addLiquidity(ethers.constants.AddressZero, weth.address, 100000, 15000, poolId, version),
-        ).to.be.revertedWith("evan407: token address must be given");
+        ).to.be.revertedWith("addLiquidity: token address must be given");
       });
 
       it("Check deposit token amount", async () => {
         await expect(
           sushi.connect(alice).addLiquidity(cvx.address, weth.address, 0, 100, poolId, version),
-        ).to.be.revertedWith("evan407: token amount must be bigger than 0");
+        ).to.be.revertedWith("addLiquidity: token amount must be bigger than 0");
 
         await expect(
           sushi.connect(alice).addLiquidity(cvx.address, weth.address, 10000, 0, poolId, version),
-        ).to.be.revertedWith("evan407: token amount must be bigger than 0");
+        ).to.be.revertedWith("addLiquidity: token amount must be bigger than 0");
       });
 
       it("Check lp token amount", async () => {
@@ -285,7 +334,7 @@ describe("Start liquidity program on sushiswap", async () => {
         await sushi.connect(alice).harvest(poolId, version);
 
         await expect(sushi.connect(alice).withdraw(5000, poolId, version)).to.be.revertedWith(
-          "evan407: withdraw amount must be smaller than total amount",
+          "withdraw: amount must be smaller than total amount",
         );
       });
 
@@ -335,7 +384,7 @@ describe("Start liquidity program on sushiswap", async () => {
         await sushi.connect(alice).addLiquidity(cvx.address, weth.address, 10000, 100, poolId, version);
         await expect(
           sushi.connect(alice).removeLiquidity(cvx.address, weth.address, poolId, version),
-        ).to.be.revertedWith("evan407: you have to withdraw from masterchef first");
+        ).to.be.revertedWith("removeLiquidity: you have to withdraw from masterchef first");
       });
 
       it("Check removeLiquidity", async () => {
@@ -349,7 +398,9 @@ describe("Start liquidity program on sushiswap", async () => {
       it("Check owner", async () => {
         await sushi.connect(alice).addLiquidity(cvx.address, weth.address, 10000, 100, poolId, version);
         const { lpAmount } = await sushi.connect(alice).balanceOfPool(poolId, version);
-
+        expect(sushi.connect(alice).balanceOfPool(poolId, 3)).to.be.revertedWith(
+          "checkVersion: Version must be 1 or 2",
+        );
         await sushi.connect(alice).withdraw(parseInt(lpAmount), poolId, version);
         await expect(sushi.connect(bob).removeLiquidity(cvx.address, weth.address, poolId, version)).to.be.revertedWith(
           "Ownable: caller is not the owner",

@@ -25,8 +25,13 @@ contract Sushi is Ownable {
     address private constant Factory = 0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac; // SUSHI Factory address
     address private constant SUSHI = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2; // SUSHI Token address
 
-    IMasterChefV2 immutable masterChefV2 = IMasterChefV2(0xEF0881eC094552b2e128Cf945EF17a6752B4Ec5d);
-    IMasterChefV1 immutable masterChefV1 = IMasterChefV1(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
+    IMasterChefV2 constant masterChefV2 = IMasterChefV2(0xEF0881eC094552b2e128Cf945EF17a6752B4Ec5d);
+    IMasterChefV1 constant masterChefV1 = IMasterChefV1(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
+
+    modifier checkVersion(uint _version) {
+        require(_version == 1 || _version == 2, "checkVersion: Version must be 1 or 2");
+        _;
+    }
 
     /// @notice Users can call this function to deposit their token on sushiSwap
     /// @param _tokenA address
@@ -40,9 +45,9 @@ contract Sushi is Ownable {
         uint _amountB,
         uint _poolId,
         uint _version
-    ) external onlyOwner {
-        require(_tokenA != address(0) && _tokenB != address(0), "evan407: token address must be given");
-        require(_amountA > 0 && _amountB > 0, "evan407: token amount must be bigger than 0");
+    ) external onlyOwner checkVersion(_version) {
+        require(_tokenA != address(0) && _tokenB != address(0), "addLiquidity: token address must be given");
+        require(_amountA > 0 && _amountB > 0, "addLiquidity: token amount must be bigger than 0");
 
         _addLiquidity(_tokenA, _tokenB, _amountA, _amountB, _poolId, _version);
     }
@@ -87,9 +92,14 @@ contract Sushi is Ownable {
     /// @param _tokenB To remove tokenB
     /// @param _poolId Masterchef Pool id
     /// @param _version Masterchef version
-    function removeLiquidity(address _tokenA, address _tokenB, uint _poolId, uint _version) external onlyOwner {
+    function removeLiquidity(
+        address _tokenA,
+        address _tokenB,
+        uint _poolId,
+        uint _version
+    ) external onlyOwner checkVersion(_version) {
         (uint lpAmount, ) = balanceOfPool(_poolId, _version);
-        require(lpAmount == 0, "evan407: you have to withdraw from masterchef first");
+        require(lpAmount == 0, "removeLiquidity: you have to withdraw from masterchef first");
 
         address pair = ISushiFactory(Factory).getPair(_tokenA, _tokenB);
         uint amount = IERC20(pair).balanceOf(address(this));
@@ -115,7 +125,7 @@ contract Sushi is Ownable {
     /// @param _want deposit token amount to MasterChef
     /// @param _poolId MasterChef pool id to deposit
     /// @param _version MasterChef version
-    function _deposit(address _token, uint _want, uint _poolId, uint _version) public onlyOwner {
+    function _deposit(address _token, uint _want, uint _poolId, uint _version) internal {
         if (_version == 2) {
             _approve(_token, address(masterChefV2), _want);
             masterChefV2.deposit(_poolId, _want, address(this));
@@ -128,7 +138,7 @@ contract Sushi is Ownable {
     /// @notice Get the reward
     /// @param _poolId MasterChef Pool Id
     /// @param _version MasterChef version
-    function harvest(uint _poolId, uint _version) public onlyOwner {
+    function harvest(uint _poolId, uint _version) external onlyOwner checkVersion(_version) {
         if (_version == 1) {
             masterChefV1.deposit(_poolId, 0);
             uint256 _sushi = balanceOfSushi(address(this));
@@ -137,7 +147,11 @@ contract Sushi is Ownable {
         } else masterChefV2.harvest(_poolId, msg.sender);
     }
 
-    function withdrawAndHarvest(uint _lpTokenAmount, uint _poolId, uint _version) public onlyOwner {
+    function withdrawAndHarvest(
+        uint _lpTokenAmount,
+        uint _poolId,
+        uint _version
+    ) external onlyOwner checkVersion(_version) {
         if (_version == 2) masterChefV2.withdrawAndHarvest(_poolId, _lpTokenAmount, msg.sender);
         else withdraw(_lpTokenAmount, _poolId, _version);
     }
@@ -146,9 +160,13 @@ contract Sushi is Ownable {
     /// @param _lpTokenAmount The token amount to withdraw
     /// @param _poolId MasterChef pool Id
     /// @param _version MasterChef version to use
-    function withdraw(uint256 _lpTokenAmount, uint _poolId, uint _version) public onlyOwner returns (uint256) {
+    function withdraw(
+        uint256 _lpTokenAmount,
+        uint _poolId,
+        uint _version
+    ) public onlyOwner checkVersion(_version) returns (uint256) {
         (uint lpAmount, ) = balanceOfPool(_poolId, _version);
-        require(lpAmount >= _lpTokenAmount, "evan407: withdraw amount must be smaller than total amount");
+        require(lpAmount >= _lpTokenAmount, "withdraw: amount must be smaller than total amount");
 
         // We have to claim reward here because user's staking amount is going to be changed.
         if (_version == 1) masterChefV1.withdraw(_poolId, _lpTokenAmount);
@@ -165,21 +183,15 @@ contract Sushi is Ownable {
     }
 
     /// @notice Users can get their balance on masterChef pool
-    function balanceOfPool(uint _poolId, uint _verions) public view returns (uint256 lpAmount, uint256 rewardsAmount) {
-        if (_verions == 2) (lpAmount, rewardsAmount) = masterChefV2.userInfo(_poolId, address(this));
+    function balanceOfPool(
+        uint _poolId,
+        uint _version
+    ) public view checkVersion(_version) returns (uint256 lpAmount, uint256 rewardsAmount) {
+        require(_version == 1 || _version == 2, "balanceOfPool: version must be 1 or 2");
+
+        if (_version == 2) (lpAmount, rewardsAmount) = masterChefV2.userInfo(_poolId, address(this));
         else (lpAmount, rewardsAmount) = masterChefV1.userInfo(_poolId, address(this));
     }
-
-    // /// @notice Check total SUSHI amount at the some time
-    // function getHarvestable(uint _poolId) external view returns (uint pendingSushi, uint pendingReward) {
-    //     pendingSushi = masterChefV2.pendingSushi(_poolId, address(this));
-    //     IMasterChefRewarder rewarder = IMasterChefRewarder(masterChefV2.rewarder(_poolId));
-    //     (, uint[] memory _rewardAmounts) = rewarder.pendingTokens(_poolId, address(this), 0);
-
-    //     if (_rewardAmounts.length > 0) {
-    //         pendingReward = _rewardAmounts[0];
-    //     }
-    // }
 
     function balanceOfSushi(address _user) public view returns (uint) {
         return IERC20(SUSHI).balanceOf(_user);
