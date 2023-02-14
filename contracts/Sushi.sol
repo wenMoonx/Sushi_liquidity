@@ -103,7 +103,7 @@ contract Sushi is Ownable {
 
         address pair = ISushiFactory(Factory).getPair(_tokenA, _tokenB);
         uint amount = IERC20(pair).balanceOf(address(this));
-        IERC20(pair).approve(Router, amount);
+        _approve(pair, Router, amount);
 
         (uint _amountA, uint _amountB) = ISushiRouter(Router).removeLiquidity(
             _tokenA,
@@ -187,8 +187,6 @@ contract Sushi is Ownable {
         uint _poolId,
         uint _version
     ) public view checkVersion(_version) returns (uint256 lpAmount, uint256 rewardsAmount) {
-        require(_version == 1 || _version == 2, "balanceOfPool: version must be 1 or 2");
-
         if (_version == 2) (lpAmount, rewardsAmount) = masterChefV2.userInfo(_poolId, address(this));
         else (lpAmount, rewardsAmount) = masterChefV1.userInfo(_poolId, address(this));
     }
